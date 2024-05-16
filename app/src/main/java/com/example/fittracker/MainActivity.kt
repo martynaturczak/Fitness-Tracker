@@ -2,6 +2,7 @@ package com.example.fittracker
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -28,24 +29,21 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +55,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fittracker.ui.theme.FitTrackerTheme
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.ResolverStyle
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -77,35 +76,70 @@ data class NavItemState(
     val title : String,
     val selectedIcon : ImageVector,
     val unselectedIcon : ImageVector
-    )
+)
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter", "UnrememberedMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyApp(modifier: Modifier = Modifier) {
-val items = listOf(
-    NavItemState(
-        title = "Kalkulator BMI",
-        selectedIcon = Icons.Filled.Menu,
-        unselectedIcon = Icons.Outlined.Menu
-    ),
-    NavItemState(
-        title = "Trening",
-        selectedIcon = Icons.Filled.Person,
-        unselectedIcon = Icons.Outlined.Person
-    ),
-    NavItemState(
-        title = "Pomiary",
-        selectedIcon = Icons.Filled.DateRange,
-        unselectedIcon = Icons.Outlined.DateRange
+    val items = listOf(
+        NavItemState(
+            title = "Kalkulator BMI",
+            selectedIcon = Icons.Filled.Menu,
+            unselectedIcon = Icons.Outlined.Menu
+        ),
+        NavItemState(
+            title = "Trening",
+            selectedIcon = Icons.Filled.Person,
+            unselectedIcon = Icons.Outlined.Person
+        ),
+        NavItemState(
+            title = "Pomiary",
+            selectedIcon = Icons.Filled.DateRange,
+            unselectedIcon = Icons.Outlined.DateRange
+        )
     )
-)
     var bottomNavState by mutableStateOf(0)
-    var currentDayOfWeek by mutableStateOf(getCurrentDayOfWeek())
     var bodyHeight by remember { mutableStateOf("") }
     var bodyWeight by remember { mutableStateOf("") }
     var BMI by remember { mutableStateOf("") }
     var weightChart by remember { mutableStateOf("") }
+    var currentDay by mutableStateOf(getCurrentDayOfWeek())
+    val db = Firebase.firestore
+    val training = db.collection("Czwartek")
+    val data1 = hashMapOf(
+        "nazwa" to "OHP",
+        "serie" to "3",
+        "przerwa" to "2 min",
+        "powtórzenia" to "10-12",
+        "opis" to "opis ćwiczenia...",
+        )
+    training.document("ćwiczenie1").set(data1)
+    val data2 = hashMapOf(
+        "nazwa" to "Negatywy na drążku",
+        "serie" to "3",
+        "przerwa" to "2 min",
+        "powtórzenia" to "10-12",
+        "opis" to "opis ćwiczenia...",
+        )
+    training.document("ćwiczenie2").set(data2)
+    val data3 = hashMapOf(
+        "nazwa" to "Wznosy hantli w bok",
+        "serie" to "3",
+        "przerwa" to "2 min",
+        "powtórzenia" to "10-12",
+        "opis" to "opis ćwiczenia...",
+    )
+    training.document("ćwiczenie3").set(data3)
+    val data4 = hashMapOf(
+        "nazwa" to "Wznosy hantli w bok",
+        "serie" to "3",
+        "przerwa" to "2 min",
+        "powtórzenia" to "10-12",
+        "opis" to "opis ćwiczenia...",
+        )
+    training.document("ćwiczenie4").set(data4)
+    retrieveData()
     Scaffold (
         modifier = modifier.fillMaxSize(),
         bottomBar = {
@@ -117,14 +151,14 @@ val items = listOf(
                     NavigationBarItem(selected = bottomNavState == index,
                         onClick = { bottomNavState = index },
                         icon = {
-                                Icon(
-                                    imageVector =
-                                    if(bottomNavState == index)
-                                        item.selectedIcon
-                                    else
-                                        item.unselectedIcon
-                                    , contentDescription = item.title
-                                )
+                            Icon(
+                                imageVector =
+                                if(bottomNavState == index)
+                                    item.selectedIcon
+                                else
+                                    item.unselectedIcon
+                                , contentDescription = item.title
+                            )
                         },
                         label = {
                             Text(text = item.title)
@@ -155,7 +189,7 @@ val items = listOf(
                         .background(color = Color(0xFFC1F0F0))
                 ) {
                     Text(
-                        text = "$currentDayOfWeek",
+                        text = "$currentDay",
                         modifier = Modifier
                             .padding(top = 45.dp)
                             .fillMaxWidth(),
@@ -195,8 +229,8 @@ val items = listOf(
                         .weight(0.5f),
                     verticalArrangement = Arrangement.spacedBy(25.dp)
                 ) {
-                    items(listOf("Ćwiczenie 1 \nOpis", "Ćwiczenie 2 \nOpis", "Ćwiczenie 3 \nOpis", "Ćwiczenie 4 \nOpis")) { item ->
-                        Box(
+                    items(exerciseNames.indices.toList()) { index ->
+                    Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 32.dp, vertical = 5.dp)
@@ -212,10 +246,18 @@ val items = listOf(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = item,
+                                    text = " ${exerciseNames[index]} \n"
+                                            + " Serie: " + "${exerciseSeries[index]} \n"
+                                            + " Przerwa: " + "${exerciseBreakTime[index]}",
                                     fontSize = 18.sp,
                                     color = LocalContentColor.current,
                                     textAlign = TextAlign.Start
+                                )
+                                Text(
+                                    text = "${exerciseRepetitions[index]} ",
+                                    fontSize = 18.sp,
+                                    color = LocalContentColor.current,
+                                    textAlign = TextAlign.End
                                 )
                             }
                         }
@@ -417,7 +459,6 @@ val items = listOf(
     }
 
 }
-
 @Composable
 fun getCurrentDayOfWeek(): String {
     val currentDayOfWeek = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE", Locale("pl")))
@@ -428,6 +469,46 @@ fun getCurrentDayOfWeek(): String {
             it.toString()
     }
     return formattedCurrentDayOfWeek;
+}
+
+private const val TAG = "FirestoreRead"
+var exerciseNames by mutableStateOf<List<String>>(emptyList())
+var exerciseDescriptions by mutableStateOf<List<String>>(emptyList())
+var exerciseRepetitions by mutableStateOf<List<String>>(emptyList())
+var exerciseBreakTime by mutableStateOf<List<String>>(emptyList())
+var exerciseSeries by mutableStateOf<List<String>>(emptyList())
+@SuppressLint("UnrememberedMutableState")
+@Composable
+fun retrieveData() {
+    var currentDay by mutableStateOf(getCurrentDayOfWeek())
+    val trainingPlanCollection = Firebase.firestore.collection(currentDay)
+
+    LaunchedEffect(currentDay) {
+        trainingPlanCollection.get()
+            .addOnSuccessListener { documents ->
+                val names = mutableListOf<String>()
+                val descriptions = mutableListOf<String>()
+                val repetitions = mutableListOf<String>()
+                val breakTime = mutableListOf<String>()
+                val series = mutableListOf<String>()
+
+                for (document in documents) {
+                    document.getString("nazwa")?.let { names.add(it) }
+                    document.getString("opis")?.let { descriptions.add(it) }
+                    document.getString("powtórzenia")?.let { repetitions.add(it) }
+                    document.getString("przerwa")?.let { breakTime.add(it) }
+                    document.getString("serie")?.let { series.add(it) }
+                }
+                exerciseNames = names
+                exerciseDescriptions = descriptions
+                exerciseRepetitions = repetitions
+                exerciseBreakTime = breakTime
+                exerciseSeries = series
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Błąd podczas pobierania danych z Firestore", exception)
+            }
+    }
 }
 
 @Preview(showBackground = true)
